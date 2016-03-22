@@ -80,6 +80,33 @@
             execute();
         });
     }
+    
+    function executeForPromiseWithDelayEs6(config, cb) {
+
+        return new Promise((resolve, reject) => {
+            function execute() {
+                let retries = 1;
+                var original = cb();
+
+                original.then((e) => {
+                    return resolve(e);
+                }, (e) => {
+                    if (++retries > config.delays) {
+                        return reject(e);
+                    }
+                    var delay = config.generator.next(retries);
+                    
+                    if (delay) {
+                        setTimeout(execute, delay.value);
+                    } else {
+                        return reject(e);
+                    }
+                })
+            }
+
+            execute();
+        });
+    }
 
 
     function executeForNode(config, fn, callback) {
@@ -142,7 +169,7 @@
                 executeForNode: executeForNode.bind(null, config)
             };
         },
-        waitAndRetry: function (delays) {
+        waitAndRetry: function (delays, generator) {
             if (Number.isInteger(delays)) {
                 delays = delayCountToDelays(delays);
             }
@@ -150,13 +177,15 @@
             if (!Array.isArray(delays)) {
                 delays = [defaults.delay];
             }
-
+            
             var config = {
-                delays: delays
+                delays: delays,
+                generator: generator
             };
 
             return {
                 executeForPromise: executeForPromiseWithDelay.bind(null, config),
+                executeForPromiseEs6: executeForPromiseWithDelay.bind(null, config),
                 executeForNode: executeForNodeWithDelay.bind(null, config)
             };
         }
